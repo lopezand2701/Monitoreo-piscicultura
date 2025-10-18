@@ -52,3 +52,4 @@ public class Rol {
         return nombre; // útil para comboBox o listas
     }
 }
+

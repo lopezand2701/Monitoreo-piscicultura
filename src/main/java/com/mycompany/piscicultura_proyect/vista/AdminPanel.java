@@ -90,3 +90,4 @@ public class AdminPanel extends JFrame {
         System.out.println("🔑 Rol ID: " + usuario.getRolId());
     }
 }
+
