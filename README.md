@@ -18,7 +18,7 @@ Cada cierto tiempo, el sistema genera **reportes automáticos** con los valores 
 
 ### 👨‍💼 Administrador
 - Gestión completa de datos del sistema (CRUD): estaciones, piscinas, sensores y piscicultores.
-- Asignación de piscinas a piscicultores.
+- Asignación de piscinas a piscicultores.s
 - Consulta de reportes globales generados por el sistema.
 
 ### 👨‍🔬 Piscicultor
