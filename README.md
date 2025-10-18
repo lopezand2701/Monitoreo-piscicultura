@@ -103,3 +103,4 @@ Desarrollado por estudiantes de **Ingeniería de Software**
 ## 📜 Licencia
 
 Este proyecto se distribuye bajo la licencia **MIT**, permitiendo su uso y modificación con fines académicos o de investigación.
+
