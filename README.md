@@ -11,7 +11,7 @@ El sistema permite registrar y controlar los parámetros de calidad del agua en 
 Los datos son obtenidos automáticamente desde sensores físicos que miden variables como **temperatura**, **pH**, y otros parámetros relevantes...
 
 Cada cierto tiempo, el sistema genera **reportes automáticos** con los valores recolectados, e incluye **alertas** cuando alguno de los parámetros se encuentra fuera de los rangos normales.
-
+àsdadsdasd
 ---
 
 ## 🧩 Roles del Sistema
