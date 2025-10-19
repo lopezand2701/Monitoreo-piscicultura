@@ -31,6 +31,8 @@ public class Main {
     }
 }
 
-
-
+// ------------------- Credenciales de prueba -------------------
+//Admin: admin@piscicultura.com / admin123
+//Piscicultor: piscicultor@piscicultura.com / user123
+//---------------------------------------------------------------
    
