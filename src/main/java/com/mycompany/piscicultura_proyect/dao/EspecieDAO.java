@@ -56,8 +56,10 @@ public class EspecieDAO {
         }
     }
 
-    // ------------------- LISTAR TODAS -------------------
-    public List<Especie> obtenerTodasEspecies() {
+    // ==================== MÉTODOS DE CONSULTA ====================
+
+    // ------------------- EXTRAER TODOS -------------------
+    public List<Especie> extraerTodos() {
         List<Especie> lista = new ArrayList<>();
         String sql = "SELECT * FROM especies ORDER BY nombre_comun";
         try (Statement st = conexion.createStatement();
@@ -71,13 +73,13 @@ public class EspecieDAO {
                 lista.add(e);
             }
         } catch (SQLException e) {
-            System.out.println("❌ Error al listar especies: " + e.getMessage());
+            System.out.println("❌ Error al extraer todas las especies: " + e.getMessage());
         }
         return lista;
     }
 
-    // ------------------- OBTENER POR ID -------------------
-    public Especie obtenerEspeciePorId(int id) {
+    // ------------------- EXTRAER POR ID -------------------
+    public Especie extraerPorId(int id) {
         String sql = "SELECT * FROM especies WHERE especie_id=?";
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
             ps.setInt(1, id);
@@ -91,9 +93,69 @@ public class EspecieDAO {
                 return e;
             }
         } catch (SQLException e) {
-            System.out.println("❌ Error al obtener especie: " + e.getMessage());
+            System.out.println("❌ Error al extraer especie por ID: " + e.getMessage());
         }
         return null;
+    }
+
+    // ------------------- EXTRAER POR NOMBRE -------------------
+    public List<Especie> extraerPorNombre(String nombre) {
+        List<Especie> lista = new ArrayList<>();
+        String sql = "SELECT * FROM especies WHERE nombre_comun ILIKE ? OR nombre_cientifico ILIKE ? ORDER BY nombre_comun";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setString(1, "%" + nombre + "%");
+            ps.setString(2, "%" + nombre + "%");
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Especie e = new Especie();
+                e.setEspecieId(rs.getInt("especie_id"));
+                e.setNombreCientifico(rs.getString("nombre_cientifico"));
+                e.setNombreComun(rs.getString("nombre_comun"));
+                e.setDescripcion(rs.getString("descripcion"));
+                lista.add(e);
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ Error al extraer especies por nombre: " + e.getMessage());
+        }
+        return lista;
+    }
+
+    // ------------------- EXTRAER POR COLUMNA -------------------
+    public List<Especie> extraerPor(String columna, String valor) {
+        List<Especie> lista = new ArrayList<>();
+
+        // Validar columnas permitidas para prevenir SQL injection
+        List<String> columnasPermitidas = List.of("nombre_cientifico", "nombre_comun", "descripcion");
+        if (!columnasPermitidas.contains(columna)) {
+            System.out.println("❌ Columna no permitida para búsqueda: " + columna);
+            return lista;
+        }
+
+        String sql = "SELECT * FROM especies WHERE " + columna + " ILIKE ? ORDER BY nombre_comun";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setString(1, "%" + valor + "%");
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Especie e = new Especie();
+                e.setEspecieId(rs.getInt("especie_id"));
+                e.setNombreCientifico(rs.getString("nombre_cientifico"));
+                e.setNombreComun(rs.getString("nombre_comun"));
+                e.setDescripcion(rs.getString("descripcion"));
+                lista.add(e);
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ Error al extraer especies por columna: " + e.getMessage());
+        }
+        return lista;
+    }
+
+    // ------------------- MÉTODOS ESPECÍFICOS -------------------
+    public List<Especie> obtenerTodasEspecies() {
+        return extraerTodos(); // Alias para mantener compatibilidad
+    }
+
+    public Especie obtenerEspeciePorId(int id) {
+        return extraerPorId(id); // Alias para mantener compatibilidad
     }
 
     // ------------------- ASIGNAR ESPECIE A ESTANQUE -------------------

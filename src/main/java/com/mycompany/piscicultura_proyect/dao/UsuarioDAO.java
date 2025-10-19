@@ -94,15 +94,15 @@ public class UsuarioDAO {
         }
     }
 
-    // ------------------- LISTAR -------------------
-    public List<Usuario> obtenerUsuarios() {
+    // ==================== MÉTODOS DE CONSULTA ====================
+
+    // ------------------- EXTRAER TODOS -------------------
+    public List<Usuario> extraerTodos() {
         List<Usuario> lista = new ArrayList<>();
-        // SIN TEXT BLOCKS - Compatible con Java 11
         String sql = "SELECT u.usuario_id, u.nombre, u.email, u.password, u.rol_id, r.nombre AS rol_nombre " +
                 "FROM usuarios u " +
                 "JOIN roles r ON u.rol_id = r.rol_id " +
                 "ORDER BY u.usuario_id";
-
         try (Statement st = conexion.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
@@ -110,25 +110,125 @@ public class UsuarioDAO {
                 u.setId(rs.getInt("usuario_id"));
                 u.setNombre(rs.getString("nombre"));
                 u.setEmail(rs.getString("email"));
-                u.setPassword(rs.getString("password")); // 🔐 Contraseña encriptada
+                u.setPassword(rs.getString("password"));
                 u.setRolId(rs.getInt("rol_id"));
                 u.setRolNombre(rs.getString("rol_nombre"));
                 lista.add(u);
             }
         } catch (SQLException e) {
-            System.out.println("❌ Error al listar usuarios: " + e.getMessage());
+            System.out.println("❌ Error al extraer todos los usuarios: " + e.getMessage());
         }
         return lista;
     }
 
+    // ------------------- EXTRAER POR ID -------------------
+    public Usuario extraerPorId(int id) {
+        String sql = "SELECT u.usuario_id, u.nombre, u.email, u.password, u.rol_id, r.nombre AS rol_nombre " +
+                "FROM usuarios u " +
+                "JOIN roles r ON u.rol_id = r.rol_id " +
+                "WHERE u.usuario_id = ?";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                Usuario u = new Usuario();
+                u.setId(rs.getInt("usuario_id"));
+                u.setNombre(rs.getString("nombre"));
+                u.setEmail(rs.getString("email"));
+                u.setPassword(rs.getString("password"));
+                u.setRolId(rs.getInt("rol_id"));
+                u.setRolNombre(rs.getString("rol_nombre"));
+                return u;
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ Error al extraer usuario por ID: " + e.getMessage());
+        }
+        return null;
+    }
+
+    // ------------------- EXTRAER POR NOMBRE -------------------
+    public List<Usuario> extraerPorNombre(String nombre) {
+        List<Usuario> lista = new ArrayList<>();
+        String sql = "SELECT u.usuario_id, u.nombre, u.email, u.password, u.rol_id, r.nombre AS rol_nombre " +
+                "FROM usuarios u " +
+                "JOIN roles r ON u.rol_id = r.rol_id " +
+                "WHERE u.nombre ILIKE ? " +
+                "ORDER BY u.nombre";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setString(1, "%" + nombre + "%");
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Usuario u = new Usuario();
+                u.setId(rs.getInt("usuario_id"));
+                u.setNombre(rs.getString("nombre"));
+                u.setEmail(rs.getString("email"));
+                u.setPassword(rs.getString("password"));
+                u.setRolId(rs.getInt("rol_id"));
+                u.setRolNombre(rs.getString("rol_nombre"));
+                lista.add(u);
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ Error al extraer usuarios por nombre: " + e.getMessage());
+        }
+        return lista;
+    }
+
+    // ------------------- EXTRAER POR COLUMNA -------------------
+    public List<Usuario> extraerPor(String columna, String valor) {
+        List<Usuario> lista = new ArrayList<>();
+
+        // Validar columnas permitidas
+        List<String> columnasPermitidas = List.of("nombre", "email", "rol_id");
+        if (!columnasPermitidas.contains(columna)) {
+            System.out.println("❌ Columna no permitida para búsqueda: " + columna);
+            return lista;
+        }
+
+        String sql = "SELECT u.usuario_id, u.nombre, u.email, u.password, u.rol_id, r.nombre AS rol_nombre " +
+                "FROM usuarios u " +
+                "JOIN roles r ON u.rol_id = r.rol_id " +
+                "WHERE u." + columna + " ILIKE ? " +
+                "ORDER BY u.nombre";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            if (columna.equals("rol_id")) {
+                ps.setInt(1, Integer.parseInt(valor));
+            } else {
+                ps.setString(1, "%" + valor + "%");
+            }
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Usuario u = new Usuario();
+                u.setId(rs.getInt("usuario_id"));
+                u.setNombre(rs.getString("nombre"));
+                u.setEmail(rs.getString("email"));
+                u.setPassword(rs.getString("password"));
+                u.setRolId(rs.getInt("rol_id"));
+                u.setRolNombre(rs.getString("rol_nombre"));
+                lista.add(u);
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ Error al extraer usuarios por columna: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.out.println("❌ Valor numérico inválido para columna " + columna + ": " + valor);
+        }
+        return lista;
+    }
+
+    // ------------------- MÉTODOS ESPECÍFICOS -------------------
+    public List<Usuario> obtenerUsuarios() {
+        return extraerTodos(); // Alias para mantener compatibilidad
+    }
+
+    public Usuario obtenerUsuarioPorId(int id) {
+        return extraerPorId(id); // Alias para mantener compatibilidad
+    }
+
     // ------------------- LOGIN -------------------
     public Usuario verificarLogin(String email, String password) {
-        // SIN TEXT BLOCKS - Compatible con Java 11
         String sql = "SELECT u.usuario_id, u.nombre, u.email, u.password, u.rol_id, r.nombre AS rol_nombre " +
                 "FROM usuarios u " +
                 "JOIN roles r ON u.rol_id = r.rol_id " +
                 "WHERE u.email=?";
-
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
             ps.setString(1, email);
             ResultSet rs = ps.executeQuery();
@@ -157,7 +257,7 @@ public class UsuarioDAO {
         return null;
     }
 
-    // 🔐 Método público para encriptar (puede ser útil para otras clases)
+    // 🔐 Método público para encriptar
     public static String encriptarPasswordPublic(String password) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

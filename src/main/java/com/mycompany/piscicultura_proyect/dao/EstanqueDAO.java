@@ -13,7 +13,7 @@ public class EstanqueDAO {
         this.conexion = conexion;
     }
 
-    // ✅ Inserción (solo para admin)
+    // ------------------- INSERTAR -------------------
     public boolean insertarEstanque(Estanque e) {
         String sql = "INSERT INTO estanques (estacion_id, nombre, volumen_m3, descripcion, creado_en) " +
                 "VALUES (?, ?, ?, ?, NOW())";
@@ -30,14 +30,13 @@ public class EstanqueDAO {
         }
     }
 
-    // ✅ Actualización (solo si pertenece al usuario o si es admin)
+    // ------------------- ACTUALIZAR -------------------
     public boolean actualizarEstanque(Estanque e, int usuarioId, String rol) {
         if (!"admin".equals(rol)) {
             System.err.println("⚠️ Acceso denegado: solo los administradores pueden actualizar estanques.");
             return false;
         }
 
-        // Verificar que el estacion_id sea válido (>0)
         if (e.getEstacionId() <= 0) {
             System.err.println("⚠️ El ID de estación no es válido: " + e.getEstacionId());
             return false;
@@ -69,7 +68,7 @@ public class EstanqueDAO {
         }
     }
 
-    // ✅ Eliminación (solo si pertenece o es admin)
+    // ------------------- ELIMINAR -------------------
     public boolean eliminarEstanque(int id, int usuarioId, String rol) {
         String sql;
 
@@ -93,19 +92,123 @@ public class EstanqueDAO {
         }
     }
 
-    // ✅ Listar estanques según rol
+    // ==================== MÉTODOS DE CONSULTA ====================
+
+    // ------------------- EXTRAER TODOS -------------------
+    public List<Estanque> extraerTodos() {
+        List<Estanque> lista = new ArrayList<>();
+        String sql = "SELECT * FROM estanques ORDER BY estanque_id";
+        try (Statement st = conexion.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                Estanque e = new Estanque();
+                e.setEstanqueId(rs.getInt("estanque_id"));
+                e.setEstacionId(rs.getInt("estacion_id"));
+                e.setNombre(rs.getString("nombre"));
+                e.setVolumenM3(rs.getDouble("volumen_m3"));
+                e.setDescripcion(rs.getString("descripcion"));
+                e.setCreadoEn(rs.getTimestamp("creado_en").toLocalDateTime());
+                lista.add(e);
+            }
+        } catch (SQLException ex) {
+            System.err.println("❌ Error al extraer todos los estanques: " + ex.getMessage());
+        }
+        return lista;
+    }
+
+    // ------------------- EXTRAER POR ID -------------------
+    public Estanque extraerPorId(int id) {
+        String sql = "SELECT * FROM estanques WHERE estanque_id = ?";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                Estanque e = new Estanque();
+                e.setEstanqueId(rs.getInt("estanque_id"));
+                e.setEstacionId(rs.getInt("estacion_id"));
+                e.setNombre(rs.getString("nombre"));
+                e.setVolumenM3(rs.getDouble("volumen_m3"));
+                e.setDescripcion(rs.getString("descripcion"));
+                e.setCreadoEn(rs.getTimestamp("creado_en").toLocalDateTime());
+                return e;
+            }
+        } catch (SQLException ex) {
+            System.err.println("❌ Error al extraer estanque por ID: " + ex.getMessage());
+        }
+        return null;
+    }
+
+    // ------------------- EXTRAER POR NOMBRE -------------------
+    public List<Estanque> extraerPorNombre(String nombre) {
+        List<Estanque> lista = new ArrayList<>();
+        String sql = "SELECT * FROM estanques WHERE nombre ILIKE ? ORDER BY nombre";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setString(1, "%" + nombre + "%");
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Estanque e = new Estanque();
+                e.setEstanqueId(rs.getInt("estanque_id"));
+                e.setEstacionId(rs.getInt("estacion_id"));
+                e.setNombre(rs.getString("nombre"));
+                e.setVolumenM3(rs.getDouble("volumen_m3"));
+                e.setDescripcion(rs.getString("descripcion"));
+                e.setCreadoEn(rs.getTimestamp("creado_en").toLocalDateTime());
+                lista.add(e);
+            }
+        } catch (SQLException ex) {
+            System.err.println("❌ Error al extraer estanques por nombre: " + ex.getMessage());
+        }
+        return lista;
+    }
+
+    // ------------------- EXTRAER POR COLUMNA -------------------
+    public List<Estanque> extraerPor(String columna, String valor) {
+        List<Estanque> lista = new ArrayList<>();
+
+        // Validar columnas permitidas
+        List<String> columnasPermitidas = List.of("nombre", "descripcion", "estacion_id");
+        if (!columnasPermitidas.contains(columna)) {
+            System.err.println("❌ Columna no permitida para búsqueda: " + columna);
+            return lista;
+        }
+
+        String sql = "SELECT * FROM estanques WHERE " + columna + " ILIKE ? ORDER BY estanque_id";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            if (columna.equals("estacion_id")) {
+                ps.setInt(1, Integer.parseInt(valor));
+            } else {
+                ps.setString(1, "%" + valor + "%");
+            }
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Estanque e = new Estanque();
+                e.setEstanqueId(rs.getInt("estanque_id"));
+                e.setEstacionId(rs.getInt("estacion_id"));
+                e.setNombre(rs.getString("nombre"));
+                e.setVolumenM3(rs.getDouble("volumen_m3"));
+                e.setDescripcion(rs.getString("descripcion"));
+                e.setCreadoEn(rs.getTimestamp("creado_en").toLocalDateTime());
+                lista.add(e);
+            }
+        } catch (SQLException ex) {
+            System.err.println("❌ Error al extraer estanques por columna: " + ex.getMessage());
+        } catch (NumberFormatException ex) {
+            System.err.println("❌ Valor numérico inválido para columna " + columna + ": " + valor);
+        }
+        return lista;
+    }
+
+    // ------------------- MÉTODOS ESPECÍFICOS -------------------
     public List<Estanque> listarPorUsuario(int usuarioId, String rol) {
         List<Estanque> lista = new ArrayList<>();
         String sql;
 
         if ("admin".equals(rol)) {
-            // Admin ve todos
             sql = "SELECT e.*, es.usuario_id " +
                     "FROM estanques e " +
                     "JOIN estaciones es ON e.estacion_id = es.estacion_id " +
                     "ORDER BY e.estanque_id";
         } else {
-            // Piscicultor ve solo sus estanques
             sql = "SELECT e.*, es.usuario_id " +
                     "FROM estanques e " +
                     "JOIN estaciones es ON e.estacion_id = es.estacion_id " +
@@ -124,6 +227,7 @@ public class EstanqueDAO {
                 e.setNombre(rs.getString("nombre"));
                 e.setVolumenM3(rs.getDouble("volumen_m3"));
                 e.setDescripcion(rs.getString("descripcion"));
+                e.setCreadoEn(rs.getTimestamp("creado_en").toLocalDateTime());
                 lista.add(e);
             }
 
