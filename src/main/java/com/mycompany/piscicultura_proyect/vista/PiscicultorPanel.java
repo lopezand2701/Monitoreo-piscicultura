@@ -10,13 +10,14 @@ public class PiscicultorPanel extends JFrame {
     private JButton btnVerEstaciones;
     private JButton btnVerEstanques;
     private JButton btnVerEspecies;
+    private JButton btnMonitoreoTemperatura; // 🔹 Nuevo botón
     private JButton btnSalir;
 
     public PiscicultorPanel(Usuario usuario) {
         this.usuario = usuario;
 
         setTitle("Panel de Piscicultor - Sistema Piscicultura");
-        setSize(420, 320);
+        setSize(420, 360);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLayout(null);
@@ -39,8 +40,13 @@ public class PiscicultorPanel extends JFrame {
         btnVerEspecies.setBounds(110, 160, 180, 30);
         add(btnVerEspecies);
 
+        // 🔹 Nuevo botón de monitoreo
+        btnMonitoreoTemperatura = new JButton("Monitoreo de Temperatura");
+        btnMonitoreoTemperatura.setBounds(110, 200, 180, 30);
+        add(btnMonitoreoTemperatura);
+
         btnSalir = new JButton("Cerrar Sesión");
-        btnSalir.setBounds(110, 210, 180, 30);
+        btnSalir.setBounds(110, 250, 180, 30);
         add(btnSalir);
 
         // --- Eventos ---
@@ -53,27 +59,22 @@ public class PiscicultorPanel extends JFrame {
         btnVerEstaciones.addActionListener(e -> new CrudEstacionesFrame(usuario).setVisible(true));
         btnVerEstanques.addActionListener(e -> new CrudEstanquesFrame(usuario).setVisible(true));
         btnVerEspecies.addActionListener(e -> mostrarEspeciesSoloLectura());
+        btnMonitoreoTemperatura.addActionListener(e -> new MonitoreoTemperaturaFrame().setVisible(true));
 
         JOptionPane.showMessageDialog(this,
                 "Modo Piscicultor activado.\nSolo puedes visualizar estaciones, estanques y especies.",
                 "Información",
                 JOptionPane.INFORMATION_MESSAGE);
 
-        System.out.println("👨‍🌾 Panel de piscicultor cargado - Modo solo lectura");
+        System.out.println("👨‍🌾 Panel de piscicultor cargado - con acceso a monitoreo");
     }
 
-    /**
-     * Método para mostrar especies en modo solo lectura
-     */
     private void mostrarEspeciesSoloLectura() {
         JOptionPane.showMessageDialog(this,
                 "🔍 Vista de Especies (Solo Lectura)\n\n" +
                         "Puedes ver las especies disponibles pero no modificarlas.\n" +
-                        "Solo los administradores pueden gestionar especies.",
+                        "Solo los administradores pueden gestionarlas.",
                 "Especies - Modo Vista",
                 JOptionPane.INFORMATION_MESSAGE);
-
-        // Aquí podrías abrir un frame de solo lectura si lo deseas
-        // new VistaEspeciesFrame(usuario).setVisible(true);
     }
 }

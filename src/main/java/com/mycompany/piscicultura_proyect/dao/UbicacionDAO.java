@@ -160,37 +160,45 @@ public class UbicacionDAO {
 
     // ------------------- MUNICIPIOS - EXTRAER POR COLUMNA -------------------
     public List<Municipio> extraerMunicipiosPor(String columna, String valor) {
-        List<Municipio> lista = new ArrayList<>();
+    List<Municipio> lista = new ArrayList<>();
 
-        // Validar columnas permitidas
-        List<String> columnasPermitidas = List.of("nombre", "departamento_id");
-        if (!columnasPermitidas.contains(columna)) {
-            System.out.println("❌ Columna no permitida para búsqueda: " + columna);
-            return lista;
-        }
-
-        String sql = "SELECT * FROM municipios WHERE " + columna + " ILIKE ? ORDER BY nombre";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            if (columna.equals("departamento_id")) {
-                ps.setInt(1, Integer.parseInt(valor));
-            } else {
-                ps.setString(1, "%" + valor + "%");
-            }
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Municipio m = new Municipio();
-                m.setMunicipioId(rs.getInt("municipio_id"));
-                m.setDepartamentoId(rs.getInt("departamento_id"));
-                m.setNombre(rs.getString("nombre"));
-                lista.add(m);
-            }
-        } catch (SQLException e) {
-            System.out.println("❌ Error al extraer municipios por columna: " + e.getMessage());
-        } catch (NumberFormatException e) {
-            System.out.println("❌ Valor numérico inválido para columna " + columna + ": " + valor);
-        }
+    // Validar columnas permitidas
+    List<String> columnasPermitidas = List.of("nombre", "departamento_id");
+    if (!columnasPermitidas.contains(columna)) {
+        System.out.println("❌ Columna no permitida para búsqueda: " + columna);
         return lista;
     }
+
+    String sql;
+    if (columna.equals("departamento_id")) {
+        sql = "SELECT * FROM municipios WHERE departamento_id = ? ORDER BY nombre";
+    } else {
+        sql = "SELECT * FROM municipios WHERE nombre ILIKE ? ORDER BY nombre";
+    }
+
+    try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+        if (columna.equals("departamento_id")) {
+            ps.setInt(1, Integer.parseInt(valor));
+        } else {
+            ps.setString(1, "%" + valor + "%");
+        }
+
+        ResultSet rs = ps.executeQuery();
+        while (rs.next()) {
+            Municipio m = new Municipio();
+            m.setMunicipioId(rs.getInt("municipio_id"));
+            m.setDepartamentoId(rs.getInt("departamento_id"));
+            m.setNombre(rs.getString("nombre"));
+            lista.add(m);
+        }
+    } catch (SQLException e) {
+        System.out.println("❌ Error al extraer municipios por columna: " + e.getMessage());
+    } catch (NumberFormatException e) {
+        System.out.println("❌ Valor numérico inválido para columna " + columna + ": " + valor);
+    }
+    return lista;
+}
+
 
     // ------------------- MÉTODOS ESPECÍFICOS -------------------
     public List<Departamento> obtenerTodosDepartamentos() {
