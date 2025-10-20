@@ -8,7 +8,7 @@ public class ConexionPostgres {
 
     private static final String URL = "jdbc:postgresql://localhost:5432/psicultura"; // Cambia "piscicultura" por el nombre de tu BD
     private static final String USER = "postgres"; // Tu usuario de PostgreSQL
-    private static final String PASSWORD = "postgres"; // Tu contraseña
+    private static final String PASSWORD = "DEANT"; // Tu contraseña
 
     public static Connection getConexion() {
         Connection conn = null;

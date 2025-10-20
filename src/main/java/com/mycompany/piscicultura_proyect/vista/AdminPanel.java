@@ -1,6 +1,7 @@
 package com.mycompany.piscicultura_proyect.vista;
 
 import com.mycompany.piscicultura_proyect.modelo.Usuario;
+
 import javax.swing.*;
 
 public class AdminPanel extends JFrame {
@@ -12,12 +13,13 @@ public class AdminPanel extends JFrame {
     private JButton btnGestionUsuarios;
     private JButton btnGestionEspecies;
     private JButton btnSalir;
+    private JButton btnMonitoreoTemperatura; // 🔹 Nuevo botón
 
     public AdminPanel(Usuario usuario) {
         this.usuario = usuario;
 
         setTitle("Panel Principal - Sistema Piscicultura");
-        setSize(450, 380);
+        setSize(450, 420);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLayout(null);
@@ -45,8 +47,13 @@ public class AdminPanel extends JFrame {
         btnGestionUsuarios.setBounds(120, 200, 200, 30);
         add(btnGestionUsuarios);
 
+        // 🔹 Nuevo botón para monitoreo
+        btnMonitoreoTemperatura = new JButton("Monitoreo de Temperatura");
+        btnMonitoreoTemperatura.setBounds(120, 240, 200, 30);
+        add(btnMonitoreoTemperatura);
+
         btnSalir = new JButton("Cerrar Sesión");
-        btnSalir.setBounds(120, 250, 200, 30);
+        btnSalir.setBounds(120, 290, 200, 30);
         add(btnSalir);
 
         // --- Eventos ---
@@ -63,6 +70,9 @@ public class AdminPanel extends JFrame {
             btnGestionEspecies.addActionListener(e -> new CrudEspeciesFrame(usuario).setVisible(true));
             btnGestionUsuarios.addActionListener(e -> new CrudUsuariosFrame(usuario).setVisible(true));
 
+            // 🔹 Acceso al monitoreo
+            btnMonitoreoTemperatura.addActionListener(e -> new MonitoreoTemperaturaFrame().setVisible(true));
+
             System.out.println("✅ Panel de administrador cargado - Acceso total");
 
         } else if (usuario.getRolId() == 2) {
@@ -77,6 +87,9 @@ public class AdminPanel extends JFrame {
             btnGestionUsuarios.setEnabled(false);
             btnGestionUsuarios.setToolTipText("No tiene permisos para gestionar usuarios");
 
+            // 🔹 El piscicultor también puede ver el monitoreo (solo lectura)
+            btnMonitoreoTemperatura.addActionListener(e -> new MonitoreoTemperaturaFrame().setVisible(true));
+
             JOptionPane.showMessageDialog(this,
                     "Estás en modo solo lectura.\nNo puedes modificar estaciones, estanques, especies ni usuarios.",
                     "Modo Piscicultor",
@@ -90,4 +103,3 @@ public class AdminPanel extends JFrame {
         System.out.println("🔑 Rol ID: " + usuario.getRolId());
     }
 }
-

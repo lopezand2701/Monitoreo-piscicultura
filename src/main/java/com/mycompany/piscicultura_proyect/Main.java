@@ -1,4 +1,3 @@
-
 package com.mycompany.piscicultura_proyect;
 
 import com.mycompany.piscicultura_proyect.vista.LoginFrame;
@@ -14,15 +13,8 @@ public class Main {
             System.out.println("❌ No se pudo establecer la conexión con la base de datos. Verifica las credenciales.");
             return; // Detener el programa si no hay conexión
         } else {
-            System.out.println("✅ \n" + "Conexión establecida correctamente.");
+            System.out.println("✅ Conexión establecida correctamente con la base de datos.");
         }
-
-        // 🎨 Configurar estilo visual (look & feel)
-        try {
-            javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) { 
-            System.out.println("⚠️ No se pudo aplicar el estilo visual: " + e.getMessage());
-        }                                                               
 
         // 🚀 Iniciar la ventana de Login
         java.awt.EventQueue.invokeLater(() -> {
@@ -31,8 +23,7 @@ public class Main {
     }
 }
 
-// ------------------- Credenciales de prueba -------------------
-//Admin: admin@piscicultura.com / admin123
-//Piscicultor: piscicultor@piscicultura.com / user123
-//---------------------------------------------------------------
-   
+// ------------------- C        redenciales de prueba -------------------
+// Admin: admin@piscicultura.com / admin123
+// Piscicultor: piscicultor@piscicultura.com / user123
+// --------------------------------------------------------------
