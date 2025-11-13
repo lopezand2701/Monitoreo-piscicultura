@@ -219,10 +219,6 @@ public class UsuarioDAO {
         return extraerTodos(); // Alias para mantener compatibilidad
     }
 
-    public Usuario obtenerUsuarioPorId(int id) {
-        return extraerPorId(id); // Alias para mantener compatibilidad
-    }
-
     // ------------------- LOGIN -------------------
     public Usuario verificarLogin(String email, String password) {
         String sql = "SELECT u.usuario_id, u.nombre, u.email, u.password, u.rol_id, r.nombre AS rol_nombre " +
@@ -276,4 +272,29 @@ public class UsuarioDAO {
             return null;
         }
     }
+
+    public Usuario obtenerUsuarioPorId(int id) {
+        String sql = "SELECT * FROM usuarios WHERE usuario_id = ?";
+        try (Connection con = ConexionPostgres.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Usuario u = new Usuario();
+                    u.setId(rs.getInt("usuario_id"));
+                    u.setNombre(rs.getString("nombre"));
+                    u.setEmail(rs.getString("email"));
+                    u.setRolId(rs.getInt("rol_id"));
+                    // si tienes el campo rol_nombre:
+                    u.setRolNombre(rs.getString("rol_nombre"));
+                    return u;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("⚠️ Error al obtener usuario por ID: " + e.getMessage());
+        }
+        return null;
+    }
+
+
 }

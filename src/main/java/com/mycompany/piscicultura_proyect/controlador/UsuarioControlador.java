@@ -14,33 +14,24 @@ public class UsuarioControlador {
     }
 
     // ------------------- LOGIN -------------------
-    /**
-     * Verifica las credenciales del usuario y devuelve el objeto Usuario con su rol.
-     */
     public Usuario verificarLogin(String email, String password) {
         System.out.println("🔐 Controlador - Intentando login para: " + email);
-
         Usuario usuario = usuarioDAO.verificarLogin(email, password);
         if (usuario != null) {
-            System.out.println("✅ Controlador - Login exitoso. Rol: " + usuario.getRolNombre());
-            System.out.println("✅ Controlador - ID: " + usuario.getId() + ", Nombre: " + usuario.getNombre());
+            System.out.println("✅ Login exitoso: " + usuario.getNombre() + " (Rol: " + usuario.getRolNombre() + ")");
         } else {
-            System.out.println("❌ Controlador - Credenciales inválidas para: " + email);
+            System.out.println("❌ Credenciales inválidas para: " + email);
         }
         return usuario;
     }
 
     // ------------------- INSERTAR -------------------
-    /**
-     * Inserta un nuevo usuario (puede ser admin o piscicultor).
-     */
     public boolean insertarUsuario(Usuario usuario) {
         if (usuario.getNombre().isEmpty() || usuario.getEmail().isEmpty() || usuario.getPassword().isEmpty()) {
             System.out.println("⚠️ Datos incompletos, no se puede registrar el usuario.");
             return false;
         }
 
-        // Validar fortaleza de contraseña
         if (!validarFortalezaPassword(usuario.getPassword())) {
             System.out.println("⚠️ La contraseña debe tener al menos 6 caracteres.");
             return false;
@@ -65,40 +56,41 @@ public class UsuarioControlador {
 
     // ------------------- LISTAR -------------------
     public List<Usuario> obtenerUsuarios() {
-        List<Usuario> usuarios = usuarioDAO.obtenerUsuarios();
-        System.out.println("📊 Controlador - Usuarios obtenidos: " + usuarios.size());
-        for (Usuario u : usuarios) {
-            System.out.println("   - " + u.getNombre() + " (" + u.getEmail() + ") - Rol: " + u.getRolNombre());
-        }
-        return usuarios;
+        return usuarioDAO.obtenerUsuarios();
     }
 
-    // ------------------- VALIDACIONES POR ROL -------------------
-    /**
-     * Determina si un usuario tiene permisos de administrador.
-     */
+    // ------------------- VALIDACIONES -------------------
     public boolean esAdmin(Usuario usuario) {
-        boolean esAdmin = usuario != null && "admin".equalsIgnoreCase(usuario.getRolNombre());
-        System.out.println("👨‍💼 Controlador - ¿Es admin " + (usuario != null ? usuario.getNombre() : "null") + "? " + esAdmin);
-        return esAdmin;
+        return usuario != null && "admin".equalsIgnoreCase(usuario.getRolNombre());
     }
 
-    /**
-     * Determina si un usuario es piscicultor.
-     */
     public boolean esPiscicultor(Usuario usuario) {
-        boolean esPiscicultor = usuario != null && "piscicultor".equalsIgnoreCase(usuario.getRolNombre());
-        System.out.println("👨‍🌾 Controlador - ¿Es piscicultor " + (usuario != null ? usuario.getNombre() : "null") + "? " + esPiscicultor);
-        return esPiscicultor;
+        return usuario != null && "piscicultor".equalsIgnoreCase(usuario.getRolNombre());
     }
 
-    // 🔐 Validar fortaleza de contraseña
     private boolean validarFortalezaPassword(String password) {
         return password != null && password.length() >= 6;
     }
 
-    // 🔐 Método público para encriptar contraseñas
     public static String encriptarPassword(String password) {
         return UsuarioDAO.encriptarPasswordPublic(password);
     }
+
+    // ------------------- NUEVOS MÉTODOS PARA INTERFAZ CRUD -------------------
+    /**
+     * Devuelve la lista completa de usuarios (para combos u otras vistas).
+     */
+    public List<Usuario> listarTodos() {
+        return usuarioDAO.obtenerUsuarios();
+    }
+
+    /**
+     * Devuelve el nombre del usuario dado su ID.
+     */
+    public String obtenerNombreUsuario(int id) {
+        Usuario u = usuarioDAO.obtenerUsuarioPorId(id);
+        return (u != null) ? u.getNombre() : "Desconocido";
+    }
 }
+
+

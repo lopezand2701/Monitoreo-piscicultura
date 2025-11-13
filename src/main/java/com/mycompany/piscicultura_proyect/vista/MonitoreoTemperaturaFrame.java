@@ -1,21 +1,26 @@
 package com.mycompany.piscicultura_proyect.vista;
 
 import com.fazecast.jSerialComm.SerialPort;
-import java.awt.*;
-import java.io.InputStream;
-import java.sql.*;
-import java.util.*;
-import java.util.Scanner;
+import com.mycompany.piscicultura_proyect.ConexionPostgres;
+import com.mycompany.piscicultura_proyect.util.ReporteUtil;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import com.mycompany.piscicultura_proyect.ConexionPostgres;
+import java.awt.*;
+import java.io.File;
+import java.io.InputStream;
+import java.sql.*;
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
 
 public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
 
     private JLabel lblTemperatura;
     private JComboBox<String> comboSensores;
     private JComboBox<String> comboEstanques;
-    private JButton btnIniciar, btnDetener;
+    private JButton btnIniciar, btnDetener, btnReporte;
 
     private SerialPort puerto;
     private Thread hiloLectura;
@@ -24,12 +29,11 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
     private Map<String, Integer> mapaSensores = new HashMap<>();
     private Map<String, Integer> mapaEstanques = new HashMap<>();
 
-    // Tiempo entre mediciones (ms)
     private final int INTERVALO_LECTURA = 3000;
 
     public MonitoreoTemperaturaFrame() {
         setTitle("Monitoreo de Temperatura - DS18B20");
-        setSize(500, 320);
+        setSize(520, 360);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
@@ -51,12 +55,15 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
         add(lblTemperatura, BorderLayout.CENTER);
 
         // -------- Panel inferior (botones) --------
-        JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
+        JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
         btnIniciar = new JButton("Iniciar medición");
         btnDetener = new JButton("Detener");
+        btnReporte = new JButton("📄 Generar Reporte");
+
         btnDetener.setEnabled(false);
         panelBotones.add(btnIniciar);
         panelBotones.add(btnDetener);
+        panelBotones.add(btnReporte);
         add(panelBotones, BorderLayout.SOUTH);
 
         // Cargar datos desde BD
@@ -66,6 +73,7 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
         // Eventos de botones
         btnIniciar.addActionListener(e -> iniciarLectura());
         btnDetener.addActionListener(e -> detenerLectura());
+        btnReporte.addActionListener(e -> generarReporte());
 
         // Cerrar el puerto al cerrar ventana
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -74,6 +82,35 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
                 detenerLectura();
             }
         });
+    }
+
+    /** Genera un reporte PDF de las mediciones del estanque seleccionado */
+    private void generarReporte() {
+        try {
+            String estanqueNombre = (String) comboEstanques.getSelectedItem();
+            Integer estanqueId = mapaEstanques.get(estanqueNombre);
+
+            if (estanqueId == null) {
+                JOptionPane.showMessageDialog(this, "Seleccione un estanque válido para generar el reporte.");
+                return;
+            }
+
+            LocalDate ini = LocalDate.now().minusDays(7);
+            LocalDate fin = LocalDate.now();
+
+            File pdf = new File("reporte_estanque_" + estanqueId + ".pdf");
+            com.mycompany.piscicultura_proyect.util.ReporteUtil.generarPDF(ini, fin, estanqueId, null, pdf);
+
+            JOptionPane.showMessageDialog(this,
+                    "✅ Reporte generado correctamente:\n" + pdf.getAbsolutePath(),
+                    "Reporte creado", JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "❌ Error generando el reporte: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
     }
 
     private void cargarSensores() {
@@ -131,8 +168,8 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
         String estanqueNombre = (String) comboEstanques.getSelectedItem();
 
         if (sensorNombre == null || estanqueNombre == null ||
-            !mapaSensores.containsKey(sensorNombre) ||
-            !mapaEstanques.containsKey(estanqueNombre)) {
+                !mapaSensores.containsKey(sensorNombre) ||
+                !mapaEstanques.containsKey(estanqueNombre)) {
             JOptionPane.showMessageDialog(this, "Seleccione un sensor y un estanque válidos.");
             return;
         }
@@ -176,12 +213,11 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
                     double temp = Double.parseDouble(line);
 
                     SwingUtilities.invokeLater(() ->
-                        lblTemperatura.setText(String.format("%.2f °C", temp))
+                            lblTemperatura.setText(String.format("%.2f °C", temp))
                     );
 
                     guardarMedicion(temp);
 
-                    // Espera antes de la siguiente lectura
                     Thread.sleep(INTERVALO_LECTURA);
 
                 } catch (NumberFormatException e) {

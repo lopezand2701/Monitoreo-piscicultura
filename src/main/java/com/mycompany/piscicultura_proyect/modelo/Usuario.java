@@ -12,7 +12,6 @@ public class Usuario {
     public Usuario() {
     }
 
-    // Constructor completo
     public Usuario(int id, String nombre, String email, String password, int rolId, String rolNombre) {
         this.id = id;
         this.nombre = nombre;
@@ -22,7 +21,6 @@ public class Usuario {
         this.rolNombre = rolNombre;
     }
 
-    // Constructor sin id (para inserciones nuevas)
     public Usuario(String nombre, String email, String password, int rolId) {
         this.nombre = nombre;
         this.email = email;
@@ -30,7 +28,6 @@ public class Usuario {
         this.rolId = rolId;
     }
 
-    // Constructor sin rolNombre (cuando no se necesita mostrarlo)
     public Usuario(int id, String nombre, String email, String password, int rolId) {
         this.id = id;
         this.nombre = nombre;
@@ -100,13 +97,7 @@ public class Usuario {
     // -------- toString --------
     @Override
     public String toString() {
-        return "Usuario{" +
-                "id=" + id +
-                ", nombre='" + nombre + '\'' +
-                ", email='" + email + '\'' +
-                ", rolId=" + rolId +
-                ", rolNombre='" + rolNombre + '\'' +
-                '}';
+        return nombre; // 👈 ahora solo mostrará el nombre en los JComboBox
     }
 }
 

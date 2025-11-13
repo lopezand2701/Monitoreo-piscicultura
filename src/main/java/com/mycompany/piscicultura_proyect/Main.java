@@ -13,7 +13,7 @@ public class Main {
             System.out.println("❌ No se pudo establecer la conexión con la base de datos. Verifica las credenciales.");
             return; // Detener el programa si no hay conexión
         } else {
-            System.out.println("✅ Conexión establecida correctamente con la base de datos.");
+            System.out.println  ("✅ Conexión establecida correctamente con la base de datos.");
         }
 
         // 🚀 Iniciar la ventana de Login
@@ -23,7 +23,7 @@ public class Main {
     }
 }
 
-// ------------------- C        redenciales de prueba -------------------
+// ------------------- Credenciales de prueba -------------------
 // Admin: admin@piscicultura.com / admin123
 // Piscicultor: piscicultor@piscicultura.com / user123
 // --------------------------------------------------------------

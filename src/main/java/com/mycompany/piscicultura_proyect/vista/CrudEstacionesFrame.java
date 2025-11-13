@@ -2,6 +2,7 @@ package com.mycompany.piscicultura_proyect.vista;
 
 import com.mycompany.piscicultura_proyect.controlador.EstacionControlador;
 import com.mycompany.piscicultura_proyect.controlador.UbicacionControlador;
+import com.mycompany.piscicultura_proyect.controlador.UsuarioControlador;
 import com.mycompany.piscicultura_proyect.modelo.Estacion;
 import com.mycompany.piscicultura_proyect.modelo.Departamento;
 import com.mycompany.piscicultura_proyect.modelo.Municipio;
@@ -16,11 +17,15 @@ public class CrudEstacionesFrame extends JFrame {
 
     private EstacionControlador controlador;
     private UbicacionControlador ubicacionControlador;
+    private UsuarioControlador usuarioControlador;
+
     private JTable tabla;
     private DefaultTableModel modelo;
-    private JTextField txtId, txtNombre, txtUbicacion, txtUsuarioId;
+    private JTextField txtId, txtNombre, txtUbicacion;
     private JComboBox<Departamento> comboDepartamentos;
     private JComboBox<Municipio> comboMunicipios;
+    private JComboBox<Usuario> comboUsuarios;
+
     private JButton btnAgregar, btnActualizar, btnEliminar, btnLimpiar;
     private Usuario usuario;
 
@@ -28,9 +33,10 @@ public class CrudEstacionesFrame extends JFrame {
         this.usuario = usuario;
         this.controlador = new EstacionControlador();
         this.ubicacionControlador = new UbicacionControlador();
+        this.usuarioControlador = new UsuarioControlador();
 
         setTitle("Gestión de Estaciones");
-        setSize(900, 500);
+        setSize(950, 520);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLayout(null);
@@ -77,14 +83,13 @@ public class CrudEstacionesFrame extends JFrame {
         comboMunicipios.setBounds(140, 190, 150, 25);
         add(comboMunicipios);
 
-        JLabel lblUsuarioId = new JLabel("Usuario ID:");
-        lblUsuarioId.setBounds(30, 230, 100, 25);
-        add(lblUsuarioId);
+        JLabel lblUsuario = new JLabel("Usuario:");
+        lblUsuario.setBounds(30, 230, 100, 25);
+        add(lblUsuario);
 
-        txtUsuarioId = new JTextField();
-        txtUsuarioId.setBounds(140, 230, 150, 25);
-        txtUsuarioId.setEditable(usuario.getRolId() == 1); // Solo admin puede cambiar
-        add(txtUsuarioId);
+        comboUsuarios = new JComboBox<>();
+        comboUsuarios.setBounds(140, 230, 150, 25);
+        add(comboUsuarios);
 
         btnAgregar = new JButton("Agregar");
         btnAgregar.setBounds(30, 280, 100, 30);
@@ -103,25 +108,26 @@ public class CrudEstacionesFrame extends JFrame {
         btnLimpiar.addActionListener(e -> limpiarCampos());
         add(btnLimpiar);
 
-        modelo = new DefaultTableModel(new String[]{"ID", "Nombre", "Ubicación", "Departamento", "Municipio", "Usuario ID", "Creado En"}, 0);
+        modelo = new DefaultTableModel(new String[]{"ID", "Nombre", "Ubicación", "Departamento", "Municipio", "Usuario", "Creado En"}, 0);
         tabla = new JTable(modelo);
         JScrollPane scroll = new JScrollPane(tabla);
-        scroll.setBounds(330, 30, 540, 350);
+        scroll.setBounds(330, 30, 580, 350);
         add(scroll);
 
         cargarDepartamentos();
+        cargarUsuarios();
         cargarDatos();
 
-        // Si es piscicultor (rol 2), bloquea botones
+        // Si es piscicultor (rol 2), bloquea edición
         if (usuario.getRolId() == 2) {
             btnAgregar.setEnabled(false);
             btnActualizar.setEnabled(false);
             btnEliminar.setEnabled(false);
-            txtUsuarioId.setEditable(false);
             txtNombre.setEditable(false);
             txtUbicacion.setEditable(false);
             comboDepartamentos.setEnabled(false);
             comboMunicipios.setEnabled(false);
+            comboUsuarios.setEnabled(false);
         }
 
         // --- Eventos ---
@@ -137,13 +143,13 @@ public class CrudEstacionesFrame extends JFrame {
                     txtId.setText(modelo.getValueAt(fila, 0).toString());
                     txtNombre.setText(modelo.getValueAt(fila, 1).toString());
                     txtUbicacion.setText(modelo.getValueAt(fila, 2).toString());
-                    txtUsuarioId.setText(modelo.getValueAt(fila, 5).toString());
 
-                    // Cargar departamento y municipio seleccionados
                     String departamentoNombre = modelo.getValueAt(fila, 3).toString();
                     String municipioNombre = modelo.getValueAt(fila, 4).toString();
+                    String usuarioNombre = modelo.getValueAt(fila, 5).toString();
 
                     seleccionarDepartamentoYMunicipio(departamentoNombre, municipioNombre);
+                    seleccionarUsuario(usuarioNombre);
                 }
             }
         });
@@ -152,9 +158,7 @@ public class CrudEstacionesFrame extends JFrame {
     private void cargarDepartamentos() {
         comboDepartamentos.removeAllItems();
         List<Departamento> departamentos = ubicacionControlador.obtenerTodosDepartamentos();
-        for (Departamento depto : departamentos) {
-            comboDepartamentos.addItem(depto);
-        }
+        for (Departamento depto : departamentos) comboDepartamentos.addItem(depto);
     }
 
     private void cargarMunicipiosPorDepartamento() {
@@ -162,30 +166,44 @@ public class CrudEstacionesFrame extends JFrame {
         Departamento deptoSeleccionado = (Departamento) comboDepartamentos.getSelectedItem();
         if (deptoSeleccionado != null) {
             List<Municipio> municipios = ubicacionControlador.obtenerMunicipiosPorDepartamento(deptoSeleccionado.getDepartamentoId());
-            for (Municipio municipio : municipios) {
-                comboMunicipios.addItem(municipio);
-            }
+            for (Municipio municipio : municipios) comboMunicipios.addItem(municipio);
         }
     }
 
+    private void cargarUsuarios() {
+        comboUsuarios.removeAllItems();
+        List<Usuario> usuarios = usuarioControlador.listarTodos();
+        for (Usuario u : usuarios) comboUsuarios.addItem(u);
+    }
+
     private void seleccionarDepartamentoYMunicipio(String departamentoNombre, String municipioNombre) {
-        // Buscar y seleccionar el departamento
+        // Buscar y seleccionar el departamento correcto
         for (int i = 0; i < comboDepartamentos.getItemCount(); i++) {
             Departamento depto = comboDepartamentos.getItemAt(i);
-            if (depto.getNombre().equals(departamentoNombre)) {
+            if (depto.getNombre().equalsIgnoreCase(departamentoNombre)) {
                 comboDepartamentos.setSelectedIndex(i);
                 break;
             }
         }
 
-        // Cargar municipios para el departamento seleccionado
+        // Cargar municipios del departamento seleccionado
         cargarMunicipiosPorDepartamento();
 
-        // Buscar y seleccionar el municipio
+        // Buscar y seleccionar el municipio correcto
         for (int i = 0; i < comboMunicipios.getItemCount(); i++) {
             Municipio municipio = comboMunicipios.getItemAt(i);
-            if (municipio.getNombre().equals(municipioNombre)) {
+            if (municipio.getNombre().equalsIgnoreCase(municipioNombre)) {
                 comboMunicipios.setSelectedIndex(i);
+                break;
+            }
+        }
+    }
+
+    private void seleccionarUsuario(String nombreUsuario) {
+        for (int i = 0; i < comboUsuarios.getItemCount(); i++) {
+            Usuario u = comboUsuarios.getItemAt(i);
+            if (u.getNombre().equalsIgnoreCase(nombreUsuario)) {
+                comboUsuarios.setSelectedIndex(i);
                 break;
             }
         }
@@ -197,6 +215,7 @@ public class CrudEstacionesFrame extends JFrame {
         for (Estacion e : estaciones) {
             String departamentoNombre = ubicacionControlador.obtenerNombreDepartamento(e.getDepartamentoId());
             String municipioNombre = ubicacionControlador.obtenerNombreMunicipio(e.getMunicipioId());
+            String usuarioNombre = usuarioControlador.obtenerNombreUsuario(e.getUsuarioId());
 
             modelo.addRow(new Object[]{
                     e.getEstacionId(),
@@ -204,7 +223,7 @@ public class CrudEstacionesFrame extends JFrame {
                     e.getUbicacion(),
                     departamentoNombre,
                     municipioNombre,
-                    e.getUsuarioId(),
+                    usuarioNombre,
                     e.getCreadoEn()
             });
         }
@@ -213,29 +232,27 @@ public class CrudEstacionesFrame extends JFrame {
     private void agregarEstacion() {
         String nombre = txtNombre.getText().trim();
         String ubicacion = txtUbicacion.getText().trim();
-        int usuarioId = usuario.getRolId() == 1 ?
-                (txtUsuarioId.getText().isBlank() ? usuario.getId() : Integer.parseInt(txtUsuarioId.getText())) :
-                usuario.getId();
-
-        Departamento deptoSeleccionado = (Departamento) comboDepartamentos.getSelectedItem();
-        Municipio municipioSeleccionado = (Municipio) comboMunicipios.getSelectedItem();
 
         if (nombre.isEmpty() || ubicacion.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Complete todos los campos.");
             return;
         }
 
-        if (deptoSeleccionado == null || municipioSeleccionado == null) {
-            JOptionPane.showMessageDialog(this, "Seleccione un departamento y municipio.");
+        Departamento depto = (Departamento) comboDepartamentos.getSelectedItem();
+        Municipio muni = (Municipio) comboMunicipios.getSelectedItem();
+        Usuario userSel = (Usuario) comboUsuarios.getSelectedItem();
+
+        if (depto == null || muni == null || userSel == null) {
+            JOptionPane.showMessageDialog(this, "Seleccione departamento, municipio y usuario.");
             return;
         }
 
         Estacion e = new Estacion();
-        e.setUsuarioId(usuarioId);
         e.setNombre(nombre);
         e.setUbicacion(ubicacion);
-        e.setDepartamentoId(deptoSeleccionado.getDepartamentoId());
-        e.setMunicipioId(municipioSeleccionado.getMunicipioId());
+        e.setDepartamentoId(depto.getDepartamentoId());
+        e.setMunicipioId(muni.getMunicipioId());
+        e.setUsuarioId(userSel.getId());
 
         boolean ok = controlador.insertar(e, usuario.getRolId());
 
@@ -257,29 +274,22 @@ public class CrudEstacionesFrame extends JFrame {
         int id = Integer.parseInt(txtId.getText());
         String nombre = txtNombre.getText().trim();
         String ubicacion = txtUbicacion.getText().trim();
-        int usuarioId = usuario.getRolId() == 1 ?
-                Integer.parseInt(txtUsuarioId.getText()) : usuario.getId();
-
-        Departamento deptoSeleccionado = (Departamento) comboDepartamentos.getSelectedItem();
-        Municipio municipioSeleccionado = (Municipio) comboMunicipios.getSelectedItem();
+        Departamento depto = (Departamento) comboDepartamentos.getSelectedItem();
+        Municipio muni = (Municipio) comboMunicipios.getSelectedItem();
+        Usuario userSel = (Usuario) comboUsuarios.getSelectedItem();
 
         if (nombre.isEmpty() || ubicacion.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Complete todos los campos.");
             return;
         }
 
-        if (deptoSeleccionado == null || municipioSeleccionado == null) {
-            JOptionPane.showMessageDialog(this, "Seleccione un departamento y municipio.");
-            return;
-        }
-
         Estacion e = new Estacion();
         e.setEstacionId(id);
-        e.setUsuarioId(usuarioId);
         e.setNombre(nombre);
         e.setUbicacion(ubicacion);
-        e.setDepartamentoId(deptoSeleccionado.getDepartamentoId());
-        e.setMunicipioId(municipioSeleccionado.getMunicipioId());
+        e.setDepartamentoId(depto.getDepartamentoId());
+        e.setMunicipioId(muni.getMunicipioId());
+        e.setUsuarioId(userSel.getId());
 
         boolean ok = controlador.actualizar(e, usuario.getRolId());
 
@@ -318,15 +328,11 @@ public class CrudEstacionesFrame extends JFrame {
         txtId.setText("");
         txtNombre.setText("");
         txtUbicacion.setText("");
-        txtUsuarioId.setText("");
-
-        // Limpiar combos
-        if (comboDepartamentos.getItemCount() > 0) {
+        if (comboDepartamentos.getItemCount() > 0)
             comboDepartamentos.setSelectedIndex(0);
-        }
         comboMunicipios.removeAllItems();
-
-        // Limpiar selección de tabla
+        if (comboUsuarios.getItemCount() > 0)
+            comboUsuarios.setSelectedIndex(0);
         tabla.clearSelection();
     }
 }
