@@ -14,10 +14,14 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
 
     private JLabel lblTemperatura;
+    private JLabel lblPH;
+    private JLabel lblVoltaje;
     private JComboBox<String> comboSensores;
     private JComboBox<String> comboEstanques;
     private JButton btnIniciar, btnDetener, btnReporte;
@@ -27,9 +31,16 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
     private volatile boolean ejecutando;
 
     private Map<String, Integer> mapaSensores = new HashMap<>();
+    private Map<String, String> mapaTiposSensores = new HashMap<>();
     private Map<String, Integer> mapaEstanques = new HashMap<>();
 
     private final int INTERVALO_LECTURA = 3000;
+
+    private volatile Double ultimaTemperatura;
+    private volatile Double ultimoPH;
+    private volatile Double ultimoVoltaje;
+
+    private static final Pattern PATRON_NUMEROS = Pattern.compile("[-+]?\\d*\\.?\\d+");
 
     public MonitoreoTemperaturaFrame() {
         setTitle("Monitoreo de Temperatura - DS18B20");
@@ -50,9 +61,21 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
         add(panelSuperior, BorderLayout.NORTH);
 
         // -------- Panel central --------
-        lblTemperatura = new JLabel("Seleccione estanque y sensor", SwingConstants.CENTER);
-        lblTemperatura.setFont(new Font("Segoe UI", Font.BOLD, 30));
-        add(lblTemperatura, BorderLayout.CENTER);
+        JPanel panelCentral = new JPanel(new GridLayout(3, 1, 5, 5));
+
+        lblTemperatura = new JLabel("Temperatura: -- °C", SwingConstants.CENTER);
+        lblTemperatura.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        panelCentral.add(lblTemperatura);
+
+        lblPH = new JLabel("pH: --", SwingConstants.CENTER);
+        lblPH.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        panelCentral.add(lblPH);
+
+        lblVoltaje = new JLabel("Voltaje pH: -- V", SwingConstants.CENTER);
+        lblVoltaje.setFont(new Font("Segoe UI", Font.PLAIN, 22));
+        panelCentral.add(lblVoltaje);
+
+        add(panelCentral, BorderLayout.CENTER);
 
         // -------- Panel inferior (botones) --------
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
@@ -120,12 +143,15 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
 
             comboSensores.removeAllItems();
             mapaSensores.clear();
+            mapaTiposSensores.clear();
 
             while (rs.next()) {
                 int id = rs.getInt("sensor_id");
-                String nombre = rs.getString("tipo") + " - " + rs.getString("modelo");
+                String tipo = rs.getString("tipo");
+                String nombre = tipo + " - " + rs.getString("modelo");
                 comboSensores.addItem(nombre);
                 mapaSensores.put(nombre, id);
+                mapaTiposSensores.put(nombre, tipo);
             }
 
             if (comboSensores.getItemCount() == 0) {
@@ -210,18 +236,8 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
                 String line = scanner.nextLine().trim();
 
                 try {
-                    double temp = Double.parseDouble(line);
-
-                    SwingUtilities.invokeLater(() ->
-                            lblTemperatura.setText(String.format("%.2f °C", temp))
-                    );
-
-                    guardarMedicion(temp);
-
+                    procesarLineaSerial(line);
                     Thread.sleep(INTERVALO_LECTURA);
-
-                } catch (NumberFormatException e) {
-                    // Ignorar líneas no numéricas
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -232,7 +248,60 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
         }
     }
 
-    private void guardarMedicion(double valor) {
+    private void procesarLineaSerial(String line) {
+        Matcher matcher = PATRON_NUMEROS.matcher(line.replace(',', '.'));
+
+        Double temp = null;
+        Double voltaje = null;
+        Double ph = null;
+
+        int index = 0;
+        while (matcher.find()) {
+            double valor = Double.parseDouble(matcher.group());
+            if (index == 0) {
+                temp = valor;
+            } else if (index == 1) {
+                voltaje = valor;
+            } else if (index == 2) {
+                ph = valor;
+            }
+            index++;
+        }
+
+        if (temp == null && ph == null && voltaje == null) {
+            return;
+        }
+
+        if (temp != null) {
+            ultimaTemperatura = temp;
+        }
+        if (ph != null) {
+            ultimoPH = ph;
+        }
+        if (voltaje != null) {
+            ultimoVoltaje = voltaje;
+        }
+
+        Double finalTemp = temp != null ? temp : ultimaTemperatura;
+        Double finalPH = ph != null ? ph : ultimoPH;
+        Double finalVoltaje = voltaje != null ? voltaje : ultimoVoltaje;
+
+        SwingUtilities.invokeLater(() -> {
+            if (finalTemp != null) {
+                lblTemperatura.setText(String.format("Temperatura: %.2f °C", finalTemp));
+            }
+            if (finalPH != null) {
+                lblPH.setText(String.format("pH: %.2f", finalPH));
+            }
+            if (finalVoltaje != null) {
+                lblVoltaje.setText(String.format("Voltaje pH: %.3f V", finalVoltaje));
+            }
+        });
+
+        guardarMedicion(temp, ph);
+    }
+
+    private void guardarMedicion(Double temperatura, Double ph) {
         String sensorNombre = (String) comboSensores.getSelectedItem();
         String estanqueNombre = (String) comboEstanques.getSelectedItem();
 
@@ -241,7 +310,23 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
         Integer sensorId = mapaSensores.get(sensorNombre);
         Integer estanqueId = mapaEstanques.get(estanqueNombre);
 
+        String tipoSensor = mapaTiposSensores.get(sensorNombre);
+
         if (sensorId == null || estanqueId == null) return;
+
+        Double valorAGuardar = null;
+        if (tipoSensor != null) {
+            String tipoLower = tipoSensor.toLowerCase();
+            if (tipoLower.contains("temp")) {
+                valorAGuardar = temperatura;
+            } else if (tipoLower.contains("ph")) {
+                valorAGuardar = ph;
+            }
+        }
+
+        if (valorAGuardar == null) {
+            return;
+        }
 
         String sql = """
             INSERT INTO mediciones (sensor_id, estanque_id, valor, fecha_hora)
@@ -253,11 +338,11 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
 
             ps.setInt(1, sensorId);
             ps.setInt(2, estanqueId);
-            ps.setDouble(3, valor);
+            ps.setDouble(3, valorAGuardar);
             ps.executeUpdate();
 
             System.out.println("✅ Guardado: Sensor " + sensorId +
-                    ", Estanque " + estanqueId + ", Valor: " + valor);
+                    ", Estanque " + estanqueId + ", Valor: " + valorAGuardar);
 
         } catch (SQLException e) {
             System.err.println("⚠️ Error al guardar medición: " + e.getMessage());
