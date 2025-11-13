@@ -190,7 +190,7 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
                 return;
             }
 
-            System.out.println("✅ Puerto abierto: " + portName);
+            System.out.println("✅ Puerto abierto : " + portName);
 
             ejecutando = true;
             hiloLectura = new Thread(this);
