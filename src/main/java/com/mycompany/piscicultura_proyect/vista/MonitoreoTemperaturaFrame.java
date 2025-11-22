@@ -3,11 +3,11 @@ package com.mycompany.piscicultura_proyect.vista;
 import com.fazecast.jSerialComm.SerialPort;
 import com.mycompany.piscicultura_proyect.ConexionPostgres;
 import com.mycompany.piscicultura_proyect.util.ReporteUtil;
+import com.mycompany.piscicultura_proyect.modelo.Usuario;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.io.File;
 import java.io.InputStream;
 import java.sql.*;
 import java.time.LocalDate;
@@ -42,7 +42,10 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
 
     private static final Pattern PATRON_NUMEROS = Pattern.compile("[-+]?\\d*\\.?\\d+");
 
-    public MonitoreoTemperaturaFrame() {
+    private Usuario usuario;
+
+    public MonitoreoTemperaturaFrame(Usuario usuario) {
+        this.usuario = usuario;
         setTitle("Monitoreo de Temperatura - DS18B20");
         setSize(520, 360);
         setLocationRelativeTo(null);
@@ -101,18 +104,33 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
         // Cerrar el puerto al cerrar ventana
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
-            @@ -96,59 +119,62 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
+            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                detenerLectura();
+            }
+        });
+    }
+
+    private void generarReporte() {
+        try {
+            String estanqueNombre = (String) comboEstanques.getSelectedItem();
+            if (estanqueNombre == null) {
+                JOptionPane.showMessageDialog(this, "Seleccione un estanque primero");
+                return;
+            }
+
+            Integer estanqueId = mapaEstanques.get(estanqueNombre);
+            if (estanqueId == null) {
+                JOptionPane.showMessageDialog(this, "Estanque no válido");
+                return;
             }
 
             LocalDate ini = LocalDate.now().minusDays(7);
             LocalDate fin = LocalDate.now();
 
-            File pdf = new File("reporte_estanque_" + estanqueId + ".pdf");
-            com.mycompany.piscicultura_proyect.util.ReporteUtil.generarPDF(ini, fin, estanqueId, null, pdf);
-
-            JOptionPane.showMessageDialog(this,
-                    "✅ Reporte generado correctamente:\n" + pdf.getAbsolutePath(),
-                    "Reporte creado", JOptionPane.INFORMATION_MESSAGE);
+            // Abrir la ventana de generación donde el usuario puede agregar la verificación
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                new GenerarReporteFrame(estanqueId, ini, fin, null, usuario).setVisible(true);
+            });
 
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
@@ -164,169 +182,211 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
                 comboEstanques.addItem(nombre);
                 mapaEstanques.put(nombre, id);
             }
-            @@ -180,106 +206,165 @@ public class MonitoreoTemperaturaFrame extends JFrame implements Runnable {
+
+            if (comboEstanques.getItemCount() == 0) {
+                comboEstanques.addItem("⚠️ No hay estanques registrados");
+                comboEstanques.setEnabled(false);
             }
 
-            private void conectarPuerto(String portName) {
-                try {
-                    puerto = SerialPort.getCommPort(portName);
-                    puerto.setBaudRate(9600);
-                    puerto.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING, 1000, 0);
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar estanques: " + e.getMessage());
+        }
+    }
 
-                    if (!puerto.openPort()) {
-                        JOptionPane.showMessageDialog(this, "❌ No se pudo abrir el puerto " + portName);
-                        return;
-                    }
+    private void iniciarLectura() {
+        SerialPort[] puertos = SerialPort.getCommPorts();
+        if (puertos.length == 0) {
+            JOptionPane.showMessageDialog(this, "No se encontraron puertos seriales disponibles");
+            return;
+        }
 
-                    System.out.println("✅ Puerto abierto : " + portName);
+        String[] opcionesPuertos = new String[puertos.length];
+        for (int i = 0; i < puertos.length; i++) {
+            opcionesPuertos[i] = puertos[i].getSystemPortName();
+        }
 
-                    ejecutando = true;
-                    hiloLectura = new Thread(this);
-                    hiloLectura.start();
+        String puertoSeleccionado = (String) JOptionPane.showInputDialog(
+                this,
+                "Seleccione el puerto serial:",
+                "Seleccionar Puerto",
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                opcionesPuertos,
+                opcionesPuertos[0]);
 
-                } catch (Exception e) {
-                    JOptionPane.showMessageDialog(this, "⚠️ Error al conectar: " + e.getMessage());
-                }
+        if (puertoSeleccionado != null) {
+            conectarPuerto(puertoSeleccionado);
+            btnIniciar.setEnabled(false);
+            btnDetener.setEnabled(true);
+        }
+    }
+
+    private void conectarPuerto(String portName) {
+        try {
+            puerto = SerialPort.getCommPort(portName);
+            puerto.setBaudRate(9600);
+            puerto.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING, 1000, 0);
+
+            if (!puerto.openPort()) {
+                JOptionPane.showMessageDialog(this, "❌ No se pudo abrir el puerto " + portName);
+                return;
             }
 
-            @Override
-            public void run() {
-                try (InputStream in = puerto.getInputStream();
-                     Scanner scanner = new Scanner(in)) {
+            System.out.println("✅ Puerto abierto : " + portName);
 
-                    while (ejecutando && scanner.hasNextLine()) {
-                        String line = scanner.nextLine().trim();
+            ejecutando = true;
+            hiloLectura = new Thread(this);
+            hiloLectura.start();
 
-                        try {
-                            procesarLineaSerial(line);
-                            Thread.sleep(INTERVALO_LECTURA);
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                        }
-                    }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "⚠️ Error al conectar: " + e.getMessage());
+        }
+    }
 
-                } catch (Exception e) {
-                    System.err.println("❌ Error leyendo datos: " + e.getMessage());
-                }
-            }
+    @Override
+    public void run() {
+        try (InputStream in = puerto.getInputStream();
+             Scanner scanner = new Scanner(in)) {
 
-            private void procesarLineaSerial(String line) {
-                Matcher matcher = PATRON_NUMEROS.matcher(line.replace(',', '.'));
-
-                Double temp = null;
-                Double voltaje = null;
-                Double ph = null;
-
-                int index = 0;
-                while (matcher.find()) {
-                    double valor = Double.parseDouble(matcher.group());
-                    if (index == 0) {
-                        temp = valor;
-                    } else if (index == 1) {
-                        voltaje = valor;
-                    } else if (index == 2) {
-                        ph = valor;
-                    }
-                    index++;
-                }
-
-                if (temp == null && ph == null && voltaje == null) {
-                    return;
-                }
-
-                if (temp != null) {
-                    ultimaTemperatura = temp;
-                }
-                if (ph != null) {
-                    ultimoPH = ph;
-                }
-                if (voltaje != null) {
-                    ultimoVoltaje = voltaje;
-                }
-
-                Double finalTemp = temp != null ? temp : ultimaTemperatura;
-                Double finalPH = ph != null ? ph : ultimoPH;
-                Double finalVoltaje = voltaje != null ? voltaje : ultimoVoltaje;
-
-                SwingUtilities.invokeLater(() -> {
-                    if (finalTemp != null) {
-                        lblTemperatura.setText(String.format("Temperatura: %.2f °C", finalTemp));
-                    }
-                    if (finalPH != null) {
-                        lblPH.setText(String.format("pH: %.2f", finalPH));
-                    }
-                    if (finalVoltaje != null) {
-                        lblVoltaje.setText(String.format("Voltaje pH: %.3f V", finalVoltaje));
-                    }
-                });
-
-                guardarMedicion(temp, ph);
-            }
-
-            private void guardarMedicion(Double temperatura, Double ph) {
-                String sensorNombre = (String) comboSensores.getSelectedItem();
-                String estanqueNombre = (String) comboEstanques.getSelectedItem();
-
-                if (sensorNombre == null || estanqueNombre == null) return;
-
-                Integer sensorId = mapaSensores.get(sensorNombre);
-                Integer estanqueId = mapaEstanques.get(estanqueNombre);
-
-                String tipoSensor = mapaTiposSensores.get(sensorNombre);
-
-                if (sensorId == null || estanqueId == null) return;
-
-                Double valorAGuardar = null;
-                if (tipoSensor != null) {
-                    String tipoLower = tipoSensor.toLowerCase();
-                    if (tipoLower.contains("temp")) {
-                        valorAGuardar = temperatura;
-                    } else if (tipoLower.contains("ph")) {
-                        valorAGuardar = ph;
-                    }
-                }
-
-                if (valorAGuardar == null) {
-                    return;
-                }
-
-                String sql = """
-            INSERT INTO mediciones (sensor_id, estanque_id, valor, fecha_hora)
-            VALUES (?, ?, ?, NOW());
-        """;
-
-                try (Connection conn = ConexionPostgres.getConexion();
-                     PreparedStatement ps = conn.prepareStatement(sql)) {
-
-                    ps.setInt(1, sensorId);
-                    ps.setInt(2, estanqueId);
-                    ps.setDouble(3, valorAGuardar);
-                    ps.executeUpdate();
-
-                    System.out.println("✅ Guardado: Sensor " + sensorId +
-                            ", Estanque " + estanqueId + ", Valor: " + valorAGuardar);
-
-                } catch (SQLException e) {
-                    System.err.println("⚠️ Error al guardar medición: " + e.getMessage());
-                }
-            }
-
-            private void detenerLectura() {
-                ejecutando = false;
-                btnIniciar.setEnabled(true);
-                btnDetener.setEnabled(false);
+            while (ejecutando && scanner.hasNextLine()) {
+                String line = scanner.nextLine().trim();
 
                 try {
-                    if (puerto != null && puerto.isOpen()) {
-                        puerto.closePort();
-                        System.out.println("🔒 Puerto cerrado correctamente");
-                    }
-                } catch (Exception e) {
-                    System.err.println("Error al cerrar puerto: " + e.getMessage());
+                    procesarLineaSerial(line);
+                    Thread.sleep(INTERVALO_LECTURA);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                 }
             }
 
-            public static void main(String[] args) {
-                SwingUtilities.invokeLater(() -> new MonitoreoTemperaturaFrame().setVisible(true));
+        } catch (Exception e) {
+            System.err.println("❌ Error leyendo datos: " + e.getMessage());
+        }
+    }
+
+    private void procesarLineaSerial(String line) {
+        Matcher matcher = PATRON_NUMEROS.matcher(line.replace(',', '.'));
+
+        Double temp = null;
+        Double voltaje = null;
+        Double ph = null;
+
+        int index = 0;
+        while (matcher.find()) {
+            double valor = Double.parseDouble(matcher.group());
+            if (index == 0) {
+                temp = valor;
+            } else if (index == 1) {
+                voltaje = valor;
+            } else if (index == 2) {
+                ph = valor;
+            }
+            index++;
+        }
+
+        if (temp == null && ph == null && voltaje == null) {
+            return;
+        }
+
+        if (temp != null) {
+            ultimaTemperatura = temp;
+        }
+        if (ph != null) {
+            ultimoPH = ph;
+        }
+        if (voltaje != null) {
+            ultimoVoltaje = voltaje;
+        }
+
+        Double finalTemp = temp != null ? temp : ultimaTemperatura;
+        Double finalPH = ph != null ? ph : ultimoPH;
+        Double finalVoltaje = voltaje != null ? voltaje : ultimoVoltaje;
+
+        SwingUtilities.invokeLater(() -> {
+            if (finalTemp != null) {
+                lblTemperatura.setText(String.format("Temperatura: %.2f °C", finalTemp));
+            }
+            if (finalPH != null) {
+                lblPH.setText(String.format("pH: %.2f", finalPH));
+            }
+            if (finalVoltaje != null) {
+                lblVoltaje.setText(String.format("Voltaje pH: %.3f V", finalVoltaje));
+            }
+        });
+
+        guardarMedicion(temp, ph);
+    }
+
+    private void guardarMedicion(Double temperatura, Double ph) {
+        String sensorNombre = (String) comboSensores.getSelectedItem();
+        String estanqueNombre = (String) comboEstanques.getSelectedItem();
+
+        if (sensorNombre == null || estanqueNombre == null) return;
+
+        Integer sensorId = mapaSensores.get(sensorNombre);
+        Integer estanqueId = mapaEstanques.get(estanqueNombre);
+
+        String tipoSensor = mapaTiposSensores.get(sensorNombre);
+
+        if (sensorId == null || estanqueId == null) return;
+
+        Double valorAGuardar = null;
+        if (tipoSensor != null) {
+            String tipoLower = tipoSensor.toLowerCase();
+            if (tipoLower.contains("temp")) {
+                valorAGuardar = temperatura;
+            } else if (tipoLower.contains("ph")) {
+                valorAGuardar = ph;
             }
         }
+
+        if (valorAGuardar == null) {
+            return;
+        }
+
+        String sql = "INSERT INTO mediciones (sensor_id, estanque_id, valor, fecha_hora) " +
+                "VALUES (?, ?, ?, NOW())";
+
+        try (Connection conn = ConexionPostgres.getConexion();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, sensorId);
+            ps.setInt(2, estanqueId);
+            ps.setDouble(3, valorAGuardar);
+            ps.executeUpdate();
+
+            System.out.println("✅ Guardado: Sensor " + sensorId +
+                    ", Estanque " + estanqueId + ", Valor: " + valorAGuardar);
+
+        } catch (SQLException e) {
+            System.err.println("⚠️ Error al guardar medición: " + e.getMessage());
+        }
+    }
+
+    private void detenerLectura() {
+        ejecutando = false;
+        btnIniciar.setEnabled(true);
+        btnDetener.setEnabled(false);
+
+        try {
+            if (puerto != null && puerto.isOpen()) {
+                puerto.closePort();
+                System.out.println("🔒 Puerto cerrado correctamente");
+            }
+        } catch (Exception e) {
+            System.err.println("Error al cerrar puerto: " + e.getMessage());
+        }
+    }
+
+    public static void main(String[] args) {
+        // Este main es solo para pruebas, en producción se usará desde el panel principal
+        SwingUtilities.invokeLater(() -> {
+            // Crear un usuario temporal para pruebas
+            Usuario usuarioTemp = new Usuario();
+            usuarioTemp.setId(1);
+            usuarioTemp.setNombre("Técnico de Prueba");
+            usuarioTemp.setRolId(2);
+            new MonitoreoTemperaturaFrame(usuarioTemp).setVisible(true);
+        });
+    }
+}

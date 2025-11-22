@@ -17,11 +17,37 @@ public class EspecieDAO {
 
     // ------------------- INSERTAR -------------------
     public boolean insertarEspecie(Especie especie) {
-        String sql = "INSERT INTO especies (nombre_cientifico, nombre_comun, descripcion) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO especies (nombre_cientifico, nombre_comun, descripcion, temp_min, temp_max, ph_minimo, ph_maximo) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
             ps.setString(1, especie.getNombreCientifico());
             ps.setString(2, especie.getNombreComun());
             ps.setString(3, especie.getDescripcion());
+
+            // Manejar valores nulos para los rangos
+            if (especie.getTempMin() != null) {
+                ps.setDouble(4, especie.getTempMin());
+            } else {
+                ps.setNull(4, java.sql.Types.DOUBLE);
+            }
+
+            if (especie.getTempMax() != null) {
+                ps.setDouble(5, especie.getTempMax());
+            } else {
+                ps.setNull(5, java.sql.Types.DOUBLE);
+            }
+
+            if (especie.getPhMinimo() != null) {
+                ps.setDouble(6, especie.getPhMinimo());
+            } else {
+                ps.setNull(6, java.sql.Types.DOUBLE);
+            }
+
+            if (especie.getPhMaximo() != null) {
+                ps.setDouble(7, especie.getPhMaximo());
+            } else {
+                ps.setNull(7, java.sql.Types.DOUBLE);
+            }
+
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             System.out.println("❌ Error al insertar especie: " + e.getMessage());
@@ -31,12 +57,38 @@ public class EspecieDAO {
 
     // ------------------- ACTUALIZAR -------------------
     public boolean actualizarEspecie(Especie especie) {
-        String sql = "UPDATE especies SET nombre_cientifico=?, nombre_comun=?, descripcion=? WHERE especie_id=?";
+        String sql = "UPDATE especies SET nombre_cientifico=?, nombre_comun=?, descripcion=?, temp_min=?, temp_max=?, ph_minimo=?, ph_maximo=? WHERE especie_id=?";
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
             ps.setString(1, especie.getNombreCientifico());
             ps.setString(2, especie.getNombreComun());
             ps.setString(3, especie.getDescripcion());
-            ps.setInt(4, especie.getEspecieId());
+
+            // Manejar valores nulos para los rangos
+            if (especie.getTempMin() != null) {
+                ps.setDouble(4, especie.getTempMin());
+            } else {
+                ps.setNull(4, java.sql.Types.DOUBLE);
+            }
+
+            if (especie.getTempMax() != null) {
+                ps.setDouble(5, especie.getTempMax());
+            } else {
+                ps.setNull(5, java.sql.Types.DOUBLE);
+            }
+
+            if (especie.getPhMinimo() != null) {
+                ps.setDouble(6, especie.getPhMinimo());
+            } else {
+                ps.setNull(6, java.sql.Types.DOUBLE);
+            }
+
+            if (especie.getPhMaximo() != null) {
+                ps.setDouble(7, especie.getPhMaximo());
+            } else {
+                ps.setNull(7, java.sql.Types.DOUBLE);
+            }
+
+            ps.setInt(8, especie.getEspecieId());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             System.out.println("❌ Error al actualizar especie: " + e.getMessage());
@@ -65,11 +117,7 @@ public class EspecieDAO {
         try (Statement st = conexion.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
-                Especie e = new Especie();
-                e.setEspecieId(rs.getInt("especie_id"));
-                e.setNombreCientifico(rs.getString("nombre_cientifico"));
-                e.setNombreComun(rs.getString("nombre_comun"));
-                e.setDescripcion(rs.getString("descripcion"));
+                Especie e = mapearEspecieDesdeResultSet(rs);
                 lista.add(e);
             }
         } catch (SQLException e) {
@@ -85,12 +133,7 @@ public class EspecieDAO {
             ps.setInt(1, id);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
-                Especie e = new Especie();
-                e.setEspecieId(rs.getInt("especie_id"));
-                e.setNombreCientifico(rs.getString("nombre_cientifico"));
-                e.setNombreComun(rs.getString("nombre_comun"));
-                e.setDescripcion(rs.getString("descripcion"));
-                return e;
+                return mapearEspecieDesdeResultSet(rs);
             }
         } catch (SQLException e) {
             System.out.println("❌ Error al extraer especie por ID: " + e.getMessage());
@@ -107,11 +150,7 @@ public class EspecieDAO {
             ps.setString(2, "%" + nombre + "%");
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                Especie e = new Especie();
-                e.setEspecieId(rs.getInt("especie_id"));
-                e.setNombreCientifico(rs.getString("nombre_cientifico"));
-                e.setNombreComun(rs.getString("nombre_comun"));
-                e.setDescripcion(rs.getString("descripcion"));
+                Especie e = mapearEspecieDesdeResultSet(rs);
                 lista.add(e);
             }
         } catch (SQLException e) {
@@ -136,17 +175,37 @@ public class EspecieDAO {
             ps.setString(1, "%" + valor + "%");
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                Especie e = new Especie();
-                e.setEspecieId(rs.getInt("especie_id"));
-                e.setNombreCientifico(rs.getString("nombre_cientifico"));
-                e.setNombreComun(rs.getString("nombre_comun"));
-                e.setDescripcion(rs.getString("descripcion"));
+                Especie e = mapearEspecieDesdeResultSet(rs);
                 lista.add(e);
             }
         } catch (SQLException e) {
             System.out.println("❌ Error al extraer especies por columna: " + e.getMessage());
         }
         return lista;
+    }
+
+    // ------------------- MÉTODO AUXILIAR PARA MAPEAR RESULT SET -------------------
+    private Especie mapearEspecieDesdeResultSet(ResultSet rs) throws SQLException {
+        Especie e = new Especie();
+        e.setEspecieId(rs.getInt("especie_id"));
+        e.setNombreCientifico(rs.getString("nombre_cientifico"));
+        e.setNombreComun(rs.getString("nombre_comun"));
+        e.setDescripcion(rs.getString("descripcion"));
+
+        // Manejar valores nulos para los rangos
+        double tempMin = rs.getDouble("temp_min");
+        e.setTempMin(rs.wasNull() ? null : tempMin);
+
+        double tempMax = rs.getDouble("temp_max");
+        e.setTempMax(rs.wasNull() ? null : tempMax);
+
+        double phMinimo = rs.getDouble("ph_minimo");
+        e.setPhMinimo(rs.wasNull() ? null : phMinimo);
+
+        double phMaximo = rs.getDouble("ph_maximo");
+        e.setPhMaximo(rs.wasNull() ? null : phMaximo);
+
+        return e;
     }
 
     // ------------------- MÉTODOS ESPECÍFICOS -------------------
@@ -185,11 +244,7 @@ public class EspecieDAO {
             ps.setInt(1, estanqueId);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                Especie e = new Especie();
-                e.setEspecieId(rs.getInt("especie_id"));
-                e.setNombreCientifico(rs.getString("nombre_cientifico"));
-                e.setNombreComun(rs.getString("nombre_comun"));
-                e.setDescripcion(rs.getString("descripcion"));
+                Especie e = mapearEspecieDesdeResultSet(rs);
                 lista.add(e);
             }
         } catch (SQLException e) {

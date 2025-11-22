@@ -59,7 +59,7 @@ public class PiscicultorPanel extends JFrame {
         btnVerEstaciones.addActionListener(e -> new CrudEstacionesFrame(usuario).setVisible(true));
         btnVerEstanques.addActionListener(e -> new CrudEstanquesFrame(usuario).setVisible(true));
         btnVerEspecies.addActionListener(e -> mostrarEspeciesSoloLectura());
-        btnMonitoreoTemperatura.addActionListener(e -> new MonitoreoTemperaturaFrame().setVisible(true));
+        btnMonitoreoTemperatura.addActionListener(e -> new MonitoreoTemperaturaFrame(usuario).setVisible(true));
 
         JOptionPane.showMessageDialog(this,
                 "Modo Piscicultor activado.\nSolo puedes visualizar estaciones, estanques y especies.",

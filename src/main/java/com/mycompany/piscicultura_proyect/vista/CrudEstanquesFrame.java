@@ -6,8 +6,14 @@ import com.mycompany.piscicultura_proyect.modelo.Estanque;
 import com.mycompany.piscicultura_proyect.modelo.Especie;
 import com.mycompany.piscicultura_proyect.modelo.Usuario;
 import com.mycompany.piscicultura_proyect.ConexionPostgres;
+import com.mycompany.piscicultura_proyect.util.ReporteUtil;
+
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.sql.Connection;
 import java.util.List;
 import javax.swing.*;
@@ -27,6 +33,7 @@ public class CrudEstanquesFrame extends JFrame {
     private JComboBox<Especie> comboEspecies;
     private JTextField txtCantidadEspecie;
     private JButton btnAgregar, btnActualizar, btnEliminar, btnRefrescar, btnAsignarEspecie;
+    private JTextArea descripcionTecnicoArea;
 
     public CrudEstanquesFrame(Usuario usuario) {
         this.usuario = usuario;
@@ -36,7 +43,7 @@ public class CrudEstanquesFrame extends JFrame {
         this.rol = usuario.getRolId() == 1 ? "admin" : "piscicultor";
 
         setTitle("Gestión de Estanques");
-        setSize(850, 550);
+        setSize(850, 650);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setLayout(null);
@@ -143,6 +150,20 @@ public class CrudEstanquesFrame extends JFrame {
         JScrollPane scrollPane = new JScrollPane(tablaEstanques);
         scrollPane.setBounds(20, 260, 800, 240);
         add(scrollPane);
+
+        JLabel descripcionLabel = new JLabel("Descripción del técnico:");
+        descripcionLabel.setBounds(20, 510, 150, 25);
+        add(descripcionLabel);
+
+        descripcionTecnicoArea = new JTextArea(5, 20);
+        JScrollPane scrollPaneDescripcion = new JScrollPane(descripcionTecnicoArea);
+        scrollPaneDescripcion.setBounds(180, 510, 600, 100);
+        add(scrollPaneDescripcion);
+
+        JButton btnGenerarReporte = new JButton("Generar Reporte PDF");
+        btnGenerarReporte.setBounds(20, 620, 150, 25);
+        btnGenerarReporte.addActionListener(e -> generarReporte());
+        add(btnGenerarReporte);
 
         // ✅ Evento de selección de fila
         tablaEstanques.addMouseListener(new MouseAdapter() {
@@ -347,9 +368,54 @@ public class CrudEstanquesFrame extends JFrame {
         if (comboEspecies.getItemCount() > 0) {
             comboEspecies.setSelectedIndex(0);
         }
+        descripcionTecnicoArea.setText("");
 
         // Limpiar selección de tabla
         tablaEstanques.clearSelection();
     }
-}
 
+    private void generarReporte() {
+        try {
+            String descripcionTecnico = descripcionTecnicoArea.getText();
+            if (descripcionTecnico.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Por favor, ingrese la descripción del técnico.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            int estanqueId = obtenerEstanqueSeleccionado();
+            if (estanqueId == -1) {
+                JOptionPane.showMessageDialog(this, "Por favor, seleccione un estanque.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Generar nombre de archivo con timestamp
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            File archivo = new File("reporte_estanque_" + estanqueId + "_" + timestamp + ".pdf");
+
+            LocalDate fechaInicio = LocalDate.now().minusDays(1); // Últimas 24 horas
+            LocalDate fechaFin = LocalDate.now();
+
+            String nombreTecnico = usuario.getNombre();
+
+            ReporteUtil.generarReporteCompleto(archivo, fechaInicio, fechaFin, estanqueId, descripcionTecnico, nombreTecnico);
+
+            JOptionPane.showMessageDialog(this,
+                    "Reporte generado exitosamente: " + archivo.getAbsolutePath(),
+                    "Éxito", JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Error al generar el reporte: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
+    }
+
+    private int obtenerEstanqueSeleccionado() {
+        int fila = tablaEstanques.getSelectedRow();
+        if (fila != -1) {
+            return (int) modeloTabla.getValueAt(fila, 0);
+        }
+        return -1;
+    }
+}
