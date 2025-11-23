@@ -1,7 +1,7 @@
 package com.mycompany.piscicultura_proyect.vista;
 
 import com.mycompany.piscicultura_proyect.util.ReporteUtil;
-import com.mycompany.piscicultura_proyect.ConexionPostgres;
+import com.mycompany.piscicultura_proyect.controlador.ReporteControlador;
 import com.mycompany.piscicultura_proyect.modelo.Usuario;
 
 import javax.swing.*;
@@ -103,12 +103,10 @@ public class GenerarReporteFrame extends JFrame {
             String nombreTecnico = usuario.getNombre();
             ReporteUtil.generarReporteCompleto(pdf, fechaInicio, fechaFin, estanqueId, descripcion, nombreTecnico);
 
-            // Guardar metadatos del reporte en la BD (sin el archivo PDF)
+            // Guardar metadatos del reporte en la BD usando controlador
             String titulo = "Reporte Estanque " + estanqueId + " - " + txtFechaHora.getText();
-            Timestamp fechaInicioTimestamp = Timestamp.valueOf(fechaInicio.atStartOfDay());
-            Timestamp fechaFinTimestamp = Timestamp.valueOf(fechaFin.atTime(23, 59, 59));
-
-            ReporteUtil.guardarReporteEnBD(estanqueId, titulo, descripcion, fechaInicioTimestamp, fechaFinTimestamp);
+            ReporteControlador controlador = new ReporteControlador();
+            controlador.crearReporte(estanqueId, sensorId, titulo, descripcion);
 
             JOptionPane.showMessageDialog(this, "✅ Reporte generado y metadatos guardados en la base de datos.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             dispose();
